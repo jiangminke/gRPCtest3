@@ -43,8 +43,9 @@ def run():
     #双#for res in response:
     #双#   print(res.result)
 
-    response, call = client.HelloDewei.with_call(pb2.HelloDeweiReq(name='dewei', age=33),compression=grpc.Compression.Gzip,#进行压缩
-                                                 metadata=(('client_key','client_value'),))#这里必须, 就是错的
+    response, call = client.HelloDewei.with_call(pb2.HelloDeweiReq(name='dewei', age=33),compression=grpc.Compression.Gzip,
+                                                 metadata=(('nam','dewe'),)#必须使用service里面的认证用户，否则是错的'name','dewei'
+                                                 )#这里必须',',否则就是错的
     print(response.result)
     print(call.trailing_metadata())
     headers=call.trailing_metadata()

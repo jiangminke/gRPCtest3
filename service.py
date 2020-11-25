@@ -4,15 +4,48 @@ import time#通常把内置的包放在最上面便于加载
 如果是python环境那么，导包会先从同级目录去找你导入的模块。如果找不到，回去python内置的第三方包去查找模块。
 完整的查找方式为：同级方法<--同级模块<--同级包<--第三方包
 '''
+
 '''
-客户端与服务端传输与接收headers：key value :在web开发中常见
+客户端与服务端传输与接收headers：key value :在web开发中常见其实就是metadata元数据
 客户端与服务端传输和接收数据进行压缩和解压缩，只需要写服务端和客户端写压缩，解压缩会自动处理
 重点（坑）：grpc当数据发送量超过2M会报错，当需要更大的流量的时候，需要配置一下
 '''
+
+'''
+grpc服务端书写一个拦截器：用于验证身份和授权。如果是链路只需要拿到用户的相关信息记录下来就行，如果是验证身份则需要返回给用户一些错误信息
+init、code（错误信息）、detail
+grpc_code：返回错误的错误函数，例如验证失败，就终止本次操作，abort发送给客户端错误码
+intercept——service（self，continuation，headler_call_details）
+'''
+
+
 import grpc
 import hello_grpc1_pb2 as pb2
 import hello_grpc1_pb2_grpc as pb2_grpc
 from concurrent import futures#创建线程数量
+
+def _abort(code,details):
+    def terminate(ignored_request,context):#函数里面闭包函数，也就是装饰器
+        context.abort(code,details)
+    return grpc.unary_unary_rpc_method_handler(terminate)#这里不能用terminate（）
+class Testinterceptor(grpc.ServerInterceptor):
+    def __init__(self,key,value,code,detail):
+        self.key=key
+        self.value=value
+        self._abort=_abort(code,detail)
+
+    def intercept_service(self, continuation, handler_call_details):#这相当于是虚函数，继承自grpc.ServerInterceptor，修改他
+        #continuation函数执行器
+        #handler_call_details header
+        headers=dict(handler_call_details.invocation_metadata)#把metadata元组变为字典
+        print(headers)
+        print(handler_call_details.invocation_metadata)
+        print(self.value)
+        #print(headers.get(self.key,'meiyou'))#查找header中是不是有dewei如果没有就返回'meiyou'
+        if headers.get(self.key,'') != self.value:#查找header中是不是有dewei如果没有就返回''
+            return self._abort
+        return continuation(handler_call_details)#这里的headers应该就是客户端的验证信息
+
 
 
 class Bilibili(pb2_grpc.BilibiliServicer):#Bilibili是proto文件里的service，用了里面的一个服务
@@ -25,6 +58,7 @@ class Bilibili(pb2_grpc.BilibiliServicer):#Bilibili是proto文件里的service�
         context.set_code(grpc.StatusCode.DATA_LOSS)
         raise context
         '''
+
         context.set_trailing_metadata((('name','dewei'),('key','value')))#通过这函数吧这些数据返回给了发送给客户端的headers
         headers=context.invocation_metadata()
         print(headers)
@@ -61,7 +95,12 @@ class Bilibili(pb2_grpc.BilibiliServicer):#Bilibili是proto文件里的service�
 
 
 def run():
-    grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))#最大4个线程
+    validator=Testinterceptor(key='name',value='dewei',code=grpc.StatusCode.UNAUTHENTICATED,detail='Access denied+failed')#验证,输入姓名和关键字，以及身份验证码错误的code
+    grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),
+                              compression=grpc.Compression.Gzip,
+                              options=[('grpc.max_send_message_length',50*1024*1024),('grpc.max_receive_message_length',50*1024*1024)],
+                              interceptors=(validator,),)#最大4个线程,options=支持客户端发送的最大的流量,intercepters是使用拦截器可以有多个
+    #50*1024*1024表示50M
    # grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),compression=grpc.Compression.Gzip)#实现服务器端所有函数都可以压缩
     pb2_grpc.add_BilibiliServicer_to_server(Bilibili(),grpc_server)#把Bilibili这个类注册到grpc_server
     grpc_server.add_insecure_port('0.0.0.0:5000')#绑定ip和5000端口,表示所有ip都可以访问
