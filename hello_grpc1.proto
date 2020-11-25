@@ -1,0 +1,68 @@
+syntax="proto3";
+
+package test;
+//传输方式
+//1:unary 单程，是无状态的链接，请求一次之后就自动断开了
+//2：stream（类似于socket，握手之后不断开，是一个长连接，数据可以一直来回传输，可以长时间使用就不需要每次都握手了）
+// stream：1：单向1：客户端不停给服务器发，服务器只接收 2：双向：建立长连接，客户端请求服务器（流），服务器返回给客户端（流）
+//3:单向2：服务器不停给客户端发，客户端只接收
+//流的那一端会不停的收到值
+//import "导入插件路径" //一般插件属于golang，需要这个环境
+service Bilibili{
+    rpc HelloDewei(HelloDeweiReq) returns (HelloDeweiReply){} //表示服务中的方法
+    rpc HelloTest(stream HelloTestReq) returns (stream HelloTestReply){}
+    rpc TestClientRecvStream(TestClientRecvStreamRequest) returns (stream TestClientRecvStreamResponse){}
+    rpc TestClientsendStream(stream TestClientsendStreamRequest) returns (stream TestClientsendStreamResponse){}
+    rpc TestTwoWayStream(stream TestTwoWayStreamRequest) returns (stream TestTwoWayStreamResponse){}
+}
+
+message HelloDeweiReq{
+    string name = 1;//后面的1表示第一个参数，是枚举下我们所写参数的第几个，用不上，后面如果传入参数可以还是要写name和age的关键字
+    int32 age=2;
+}
+
+message HelloDeweiReply{
+    string result = 1;
+    map<string,HelloTestReplyNunber> number=4;//字典
+    message HelloTestReplyNunber{//这个只能在消息体HelloDeweiReply中使用，局部变量
+        int64 age=2;
+        string name=1;
+    }
+}
+
+message HelloTestReq{
+    string name=1;
+    int64 age=2;
+    repeated string data=3;//数组
+    map<string,HelloTestReqNunber> number=4;//字典
+}
+
+message HelloTestReqNunber{//这个可以在全体消息体中使用，全局变量
+    string name=1;
+    int32 age=2;
+    bool is_active=3;//proto3不支持默认值，int类型是默认0，string默认空字符串
+}
+message HelloTestReply{}
+
+message TestClientRecvStreamRequest{
+    string data=1;
+}
+
+message TestClientRecvStreamResponse{
+    string result=1;
+}
+
+message TestClientsendStreamRequest{
+    string data=1;
+}
+message TestTwoWayStreamRequest{
+    string data=1;
+}
+
+message TestClientsendStreamResponse{
+    string result=1;
+}
+
+message TestTwoWayStreamResponse{
+    string result=1;
+}

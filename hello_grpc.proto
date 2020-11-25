@@ -1,0 +1,37 @@
+syntax="proto3";
+
+package test;
+
+//import "导入插件路径" //一般插件属于golang，需要这个环境
+service Bilibili{
+    rpc HelloDewei(HelloDeweiReq) returns (HelloDeweiReply){} //表示服务中的方法
+    rpc HelloTest(stream HelloTestReq) returns (stream HelloTestReply){}
+}
+
+message HelloDeweiReq{
+    string name = 1;
+    int32 age = 2;
+}
+
+message HelloDeweiReply{
+    string result = 1;
+    map<string,HelloTestReplyNunber> number=4;//字典
+    message HelloTestReplyNunber{//这个只能在消息体HelloDeweiReply中使用，局部变量
+        int64 age=2;
+        string name=1;
+    }
+}
+
+message HelloTestReq{
+    string name=1;
+    int64 age=2;
+    repeated string data=3;//数组
+    map<string,HelloTestReqNunber> number=4;//字典
+}
+
+message HelloTestReqNunber{//这个可以在全体消息体中使用，全局变量
+    string name=1;
+    int32 age=2;
+    bool is_active=3;//proto3不支持默认值，int类型是默认0，string默认空字符串
+}
+message HelloTestReply{}
